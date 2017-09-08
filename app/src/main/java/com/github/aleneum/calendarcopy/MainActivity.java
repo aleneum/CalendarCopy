@@ -44,27 +44,25 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
 
     protected void runCalendarStuff() {
         service = new CalendarService(this);
-        service.copyEvent(596, 6);
+        service.getCalendars();
 
+        Spinner calendarSpinner = (Spinner) findViewById(R.id.spinnerCalendar);
 
-//        service.getCalendars();
-//        Spinner calendarSpinner = (Spinner) findViewById(R.id.spinnerCalendar);
-//
-//        // Specify the layout to use when the list of choices appears
-//        ArrayAdapter<String> calendarAdapter = new ArrayAdapter<String>(this,
-//                android.R.layout.simple_spinner_dropdown_item, service.calendarNames);
-//        // Apply the adapter to the spinner
-//        calendarSpinner.setAdapter(calendarAdapter);
-//        calendarSpinner.setOnItemSelectedListener(this);
-//
-//        Spinner targetSpinner = (Spinner) findViewById(R.id.spinnerTarget);
-//        ArrayAdapter<String> targetAdapter = new ArrayAdapter<String>(this,
-//                android.R.layout.simple_spinner_dropdown_item, service.calendarNames);
-//        targetSpinner.setAdapter(targetAdapter);
-//        targetSpinner.setOnItemSelectedListener(this);
-//
-//        Spinner eventSpinner = (Spinner) findViewById(R.id.spinnerEvent);
-//        eventSpinner.setOnItemSelectedListener(this);
+        // Specify the layout to use when the list of choices appears
+        ArrayAdapter<String> calendarAdapter = new ArrayAdapter<String>(this,
+                android.R.layout.simple_spinner_dropdown_item, service.calendarNames);
+        // Apply the adapter to the spinner
+        calendarSpinner.setAdapter(calendarAdapter);
+        calendarSpinner.setOnItemSelectedListener(this);
+
+        Spinner targetSpinner = (Spinner) findViewById(R.id.spinnerTarget);
+        ArrayAdapter<String> targetAdapter = new ArrayAdapter<String>(this,
+                android.R.layout.simple_spinner_dropdown_item, service.calendarNames);
+        targetSpinner.setAdapter(targetAdapter);
+        targetSpinner.setOnItemSelectedListener(this);
+
+        Spinner eventSpinner = (Spinner) findViewById(R.id.spinnerEvent);
+        eventSpinner.setOnItemSelectedListener(this);
     }
 
     @Override
