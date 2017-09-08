@@ -23,4 +23,8 @@ public class EventInfo extends EventSummary {
         CUSTOM_APP_PACKAGE, CUSTOM_APP_URI, UID_2445
     }
 
+    public EventInfo(String[] anInfo) {
+        super(anInfo);
+    }
+
 }

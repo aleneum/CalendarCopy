@@ -19,10 +19,6 @@ public class EventSummary {
         ID, TITLE, DTSTART
     }
 
-    public EventSummary() {
-        info = new String[]{};
-    }
-
     public EventSummary(String[] anInfo) {
         setInfo(anInfo);
     }
