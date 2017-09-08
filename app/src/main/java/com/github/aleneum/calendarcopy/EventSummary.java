@@ -1,11 +1,15 @@
 package com.github.aleneum.calendarcopy;
 
+import java.text.SimpleDateFormat;
 import android.provider.CalendarContract.Events;
 
 
 
 public class EventSummary {
     public String[] info;
+
+    // for sorting events by data
+    public long dtstart;
 
     public static final String[] PROJECTION = {
             Events._ID, Events.TITLE, Events.DTSTART
@@ -25,12 +29,13 @@ public class EventSummary {
 
     public void setInfo(String[] anInfo) {
         info = anInfo;
+        dtstart = Long.parseLong(info[FIELDS.DTSTART.ordinal()]);
     }
 
-    // TODO: Add formatted Date String to the output
     @Override
     public String toString() {
-        return info[FIELDS.TITLE.ordinal()];
+        return new SimpleDateFormat("dd.MM. (HH:mm) ").format(dtstart)
+                + info[FIELDS.TITLE.ordinal()];
     }
 
     public long getId() {

@@ -12,6 +12,8 @@ import android.util.Log;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 
@@ -36,6 +38,18 @@ public class CalendarService {
     private static final int PROJECTION_DISPLAY_NAME_INDEX = 2;
 
     private static final String DEBUG_TAG = "ccopy.CalendarService";
+
+    public static Comparator<EventSummary> eventSummaryComparator = new Comparator<EventSummary>() {
+        @Override
+        public int compare(EventSummary e1, EventSummary e2) {
+            if (e1.dtstart > e1.dtstart)
+                return 1;
+            if (e1.dtstart < e2.dtstart)
+                return -1;
+            return 0;
+        }
+    };
+
 
     public CalendarService(Activity anActivity) {
         activity = anActivity;
@@ -82,6 +96,7 @@ public class CalendarService {
         while (cur.moveToNext()) {
             events.add(new EventSummary(cursorToArray(cur)));
         }
+        Collections.sort(events, eventSummaryComparator);
     }
 
     public void copyEvent(long eventID, long targetCalendar) throws SecurityException {
