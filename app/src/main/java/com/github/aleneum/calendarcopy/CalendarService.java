@@ -84,7 +84,7 @@ public class CalendarService {
         Calendar beginTime = Calendar.getInstance();
         beginTime.set(Calendar.HOUR_OF_DAY, 0);
         Calendar endTime = Calendar.getInstance();
-        endTime.add(Calendar.DAY_OF_MONTH, 14);
+        endTime.add(Calendar.DAY_OF_MONTH, 28);
 
         ContentResolver cr = this.activity.getContentResolver();
         ContentValues values = new ContentValues();
@@ -105,7 +105,6 @@ public class CalendarService {
         Collections.sort(events, eventSummaryComparator);
     }
 
-    // TODO: Also copy Attendees and Reminders (Instances is not writable)
     public boolean copyEvent(long eventId, long targetCalendar) throws SecurityException {
         ContentResolver cr = this.activity.getContentResolver();
         String selection = "(" + Events._ID + " = ?)";
@@ -141,8 +140,7 @@ public class CalendarService {
                 return false;
             }
             long targetEventId = Long.parseLong(insertUri.getLastPathSegment());
-            if (copyAttendees(eventId, targetEventId)) { copyReminders(eventId, targetEventId); }
-            else { return false; }
+            if (! copyAttendees(eventId, targetEventId)) { return false; }
             return copyReminders(eventId, targetEventId);
         }
         return false;
