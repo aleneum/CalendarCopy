@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 
+// TODO: Add SQL-DB to keep track of copied events (parent/child)
+// TODO: Check how to add coloured circles to a TextView Item of a spinner.
 public class MainActivity extends AppCompatActivity implements OnItemSelectedListener, View.OnClickListener,
         AdapterView.OnItemClickListener {
 

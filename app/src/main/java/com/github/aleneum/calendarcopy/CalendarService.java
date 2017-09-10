@@ -127,12 +127,19 @@ public class CalendarService {
             }
             Log.d(DEBUG_TAG, "Set new calendar id");
             values.put(Events.CALENDAR_ID, targetCalendar);
+            Log.d(DEBUG_TAG, "ValuesBefore:" + values.toString());
             Log.d(DEBUG_TAG, "Check organizer");
             if (values.get(Events.ORGANIZER).equals(getCalendarById(previousCalendarId).getAccount())) {
                 Log.d(DEBUG_TAG, "Change organizer to target calendar's account");
-                values.put(Events.ORGANIZER, getCalendarById(targetCalendar).getAccount());
-            }
+                String organizer = getCalendarById(targetCalendar).getAccount();
+                if (organizer.contains("@")) {
+                    values.put(Events.ORGANIZER, organizer);
+                } else {
+                    values.remove(Events.ORGANIZER);
+                }
 
+            }
+            Log.d(DEBUG_TAG, "ValuesAfter:" + values.toString());
             Log.d(DEBUG_TAG, "Insert new event " + values.toString());
             Uri insertUri = cr.insert(Events.CONTENT_URI, values);
             if (insertUri == null) {
