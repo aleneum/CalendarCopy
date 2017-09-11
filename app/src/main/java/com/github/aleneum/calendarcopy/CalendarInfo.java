@@ -8,11 +8,13 @@ public class CalendarInfo {
     private long id;
     private String name;
     private String account;
+    public int color;
 
-    public CalendarInfo(long anId, String aName, String anAccout) {
+    public CalendarInfo(long anId, String aName, String anAccout, int aColor) {
         id = anId;
         name = aName;
         account = anAccout;
+        color = aColor;
     }
 
     @Override

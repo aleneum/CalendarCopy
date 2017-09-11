@@ -30,7 +30,8 @@ public class CalendarService {
     private static final String[] CALENDAR_PROJECTION = new String[]{
             Calendars._ID,                           // 0
             Calendars.ACCOUNT_NAME,                  // 1
-            Calendars.CALENDAR_DISPLAY_NAME          // 2
+            Calendars.CALENDAR_DISPLAY_NAME,         // 2
+            Calendars.CALENDAR_COLOR                 // 3
     };
 
     private static List<String> blacklist = Arrays.asList(
@@ -44,6 +45,7 @@ public class CalendarService {
     private static final int PROJECTION_ID_INDEX = 0;
     private static final int PROJECTION_ACCOUNT_NAME_INDEX = 1;
     private static final int PROJECTION_DISPLAY_NAME_INDEX = 2;
+    private static final int PROJECTION_COLOR_INDEX = 3;
 
     private static final String DEBUG_TAG = "ccopy.CalendarService";
 
@@ -74,7 +76,8 @@ public class CalendarService {
         while (cur.moveToNext()) {
             CalendarInfo info = new CalendarInfo(cur.getLong(PROJECTION_ID_INDEX),
                     cur.getString(PROJECTION_DISPLAY_NAME_INDEX),
-                    cur.getString(PROJECTION_ACCOUNT_NAME_INDEX));
+                    cur.getString(PROJECTION_ACCOUNT_NAME_INDEX),
+                    cur.getInt(PROJECTION_COLOR_INDEX));
             Log.d(DEBUG_TAG, "CalendarInfo: " + info.toString());
             calendars.add(info);
         }

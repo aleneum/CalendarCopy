@@ -60,8 +60,7 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
 
         // Set target calendar
         Spinner targetSpinner = (Spinner) findViewById(R.id.spinnerTargetCalendar);
-        ArrayAdapter<String> targetAdapter = new ArrayAdapter<String>(this,
-                android.R.layout.simple_spinner_dropdown_item, service.getCalendarNames());
+        ArrayAdapter<String> targetAdapter = new CalendarAdapter(this, service.calendars);
         targetSpinner.setAdapter(targetAdapter);
         targetSpinner.setSelection(service.getCalendarIds().indexOf(targetCalendarId));
         targetSpinner.setOnItemSelectedListener(this);
@@ -72,8 +71,8 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
 
         // Initialize source calender, set selection to trigger list update
         Spinner calendarSpinner = (Spinner) findViewById(R.id.spinnerSourceCalendar);
-        ArrayAdapter<String> calendarAdapter = new ArrayAdapter<String>(this,
-                android.R.layout.simple_spinner_dropdown_item, service.getCalendarNames());
+        ArrayAdapter<String> calendarAdapter = new CalendarAdapter(this, service.calendars);
+        targetSpinner.setAdapter(targetAdapter);
         calendarSpinner.setAdapter(calendarAdapter);
         calendarSpinner.setOnItemSelectedListener(this);
         calendarSpinner.setSelection(service.getCalendarIds().indexOf(sourceCalendarId));
