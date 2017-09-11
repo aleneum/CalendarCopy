@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.provider.CalendarContract.Reminders;
 import android.provider.CalendarContract.Attendees;
@@ -16,36 +17,32 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 
 
 public class CalendarService {
 
     public Activity activity;
-    public List<CalendarInfo> calendars;
     public List<EventSummary> events;
+    public SQLiteDatabase relations;
+    public RelationDatabaseHelper dbHelper;
+    public long sourceCalendarId;
+    public long targetCalendarId;
+
+    private LinkedHashMap<Long, CalendarInfo> calendars;
+
 
     // Projection array. Creating indices for this array instead of doing
     // dynamic lookups improves performance.
-    private static final String[] CALENDAR_PROJECTION = new String[]{
-            Calendars._ID,                           // 0
-            Calendars.ACCOUNT_NAME,                  // 1
-            Calendars.CALENDAR_DISPLAY_NAME,         // 2
-            Calendars.CALENDAR_COLOR                 // 3
-    };
 
     private static List<String> blacklist = Arrays.asList(
             EventInfo.PROJECTION[EventInfo.FIELDS.ID.ordinal()],
-            EventInfo.PROJECTION[EventInfo.FIELDS.CALENDAR_ID.ordinal()],
             AttendeeInfo.PROJECTION[AttendeeInfo.FIELDS.EVENT_ID.ordinal()],
             ReminderInfo.PROJECTION[ReminderInfo.FIELDS.EVENT_ID.ordinal()]
     );
-
-    // The indices for the projection array above.
-    private static final int PROJECTION_ID_INDEX = 0;
-    private static final int PROJECTION_ACCOUNT_NAME_INDEX = 1;
-    private static final int PROJECTION_DISPLAY_NAME_INDEX = 2;
-    private static final int PROJECTION_COLOR_INDEX = 3;
 
     private static final String DEBUG_TAG = "ccopy.CalendarService";
 
@@ -60,42 +57,53 @@ public class CalendarService {
         }
     };
 
+    public CalendarInfo getCalendarInfoById(Long id) {
+        return calendars.get(id);
+    }
+
+    public CalendarInfo getCalendarInfoByIndex(int pos) {
+        return (CalendarInfo) calendars.values().toArray()[pos];
+    }
+
+    public List<CalendarInfo> getCalendarInfos() {
+        return new ArrayList<>(calendars.values());
+    }
+
 
     public CalendarService(Activity anActivity) {
         activity = anActivity;
-        calendars = new ArrayList<>();
+        calendars = new LinkedHashMap<>();
+        events = new ArrayList<>();
+        dbHelper = new RelationDatabaseHelper(anActivity);
+        relations = dbHelper.getWritableDatabase();
     }
 
     public void getCalendars() throws SecurityException {
         Log.d(DEBUG_TAG, "queryCalendar() called...");
         ContentResolver cr = activity.getContentResolver();
         Uri uri = Calendars.CONTENT_URI;
-        Cursor cur = cr.query(uri, CALENDAR_PROJECTION, null, null, null);
+        Cursor cur = cr.query(uri, CalendarInfo.PROJECTION, null, null, null);
         // Use the cursor to step through the returned records
         Log.d(DEBUG_TAG, "Received " + cur.getCount() + " results");
+        calendars = new LinkedHashMap<>();
         while (cur.moveToNext()) {
-            CalendarInfo info = new CalendarInfo(cur.getLong(PROJECTION_ID_INDEX),
-                    cur.getString(PROJECTION_DISPLAY_NAME_INDEX),
-                    cur.getString(PROJECTION_ACCOUNT_NAME_INDEX),
-                    cur.getInt(PROJECTION_COLOR_INDEX));
-            Log.d(DEBUG_TAG, "CalendarInfo: " + info.toString());
-            calendars.add(info);
+            CalendarInfo info = new CalendarInfo(cursorToArray(cur));
+            calendars.put(info.getId(), info);
         }
     }
 
-    void getEvents(long calenderID) throws SecurityException {
+    void getEvents() throws SecurityException {
         Calendar beginTime = Calendar.getInstance();
         beginTime.set(Calendar.HOUR_OF_DAY, 0);
         Calendar endTime = Calendar.getInstance();
         endTime.add(Calendar.DAY_OF_MONTH, 28);
 
         ContentResolver cr = this.activity.getContentResolver();
-        ContentValues values = new ContentValues();
         String selection = "((" + Events.DTSTART + " >= ?) AND "
                 + "(" + Events.DTEND + " <= ?) AND (" + Events.CALENDAR_ID + " = ?))";
 
         String[] selectionArgs = new String[]{Long.toString(beginTime.getTimeInMillis()),
-                Long.toString(endTime.getTimeInMillis()), Long.toString(calenderID)};
+                Long.toString(endTime.getTimeInMillis()), Long.toString(sourceCalendarId)};
 
         Log.d(DEBUG_TAG, "Event query args:" + Arrays.toString(selectionArgs));
 
@@ -103,18 +111,58 @@ public class CalendarService {
         Log.d(DEBUG_TAG, "Received " + cur.getCount() + " events");
         events = new ArrayList<>();
         while (cur.moveToNext()) {
-            events.add(new EventSummary(cursorToArray(cur)));
+            EventSummary summary = new EventSummary(cursorToArray(cur));
+
+            String parentSelection = "(" + RelationDatabaseHelper.TARGET_EVENT + " = ?)";
+            String[] eventArgs = new String[]{summary.getIdString()};
+            Cursor parentCur = relations.query(RelationDatabaseHelper.TABLE_NAME,
+                    RelationsInfo.PROJECTION, parentSelection, eventArgs, null, null, null);
+
+            if (parentCur.moveToNext()) {
+                RelationsInfo relations = new RelationsInfo(cursorToArray(parentCur));
+                summary.parentId = relations.getSourceEvent();
+            }
+
+            String childrenSelection = "(" + RelationDatabaseHelper.SOURCE_EVENT + " = ?)";
+            Cursor childCur = relations.query(RelationDatabaseHelper.TABLE_NAME,
+                    RelationsInfo.PROJECTION, childrenSelection, eventArgs, null, null, null);
+
+            while (childCur.moveToNext()) {
+                RelationsInfo relations = new RelationsInfo(cursorToArray(childCur));
+                summary.childrenEventIds.add(relations.getTargetEvent());
+                summary.childrenCalendarIds.add(relations.getTargetCalendar());
+            }
+
+//            Log.i(DEBUG_TAG, "Event: " + summary.toString());
+//            Log.i(DEBUG_TAG, "  parent: " + summary.parentId);
+//            Log.i(DEBUG_TAG, "  children: " + summary.childrenEventIds);
+
+            events.add(summary);
         }
         Collections.sort(events, eventSummaryComparator);
     }
 
-    public boolean copyEvent(long eventId, long targetCalendar) throws SecurityException {
+    EventSummary getEventById(long eventId) {
+        for (EventSummary summary: events) {
+            if (summary.getId() == eventId) {
+                return summary;
+            }
+        }
+        return null;
+    }
+
+    public boolean copyEvent(long eventId) throws SecurityException {
+        if (getEventById(eventId).childrenCalendarIds.contains(targetCalendarId)) {
+            Log.d(DEBUG_TAG, "Event already in target calendar. Skip!");
+            return true;
+        }
+
         ContentResolver cr = this.activity.getContentResolver();
         String selection = "(" + Events._ID + " = ?)";
         String[] selectionArgs = new String[]{Long.toString(eventId)};
 
         Cursor cur = cr.query(Events.CONTENT_URI, EventInfo.PROJECTION, selection, selectionArgs, null);
-        Log.d(DEBUG_TAG, "Got " + cur.getCount() + " to copy to calendar with ID " + targetCalendar);
+        Log.d(DEBUG_TAG, "Got " + cur.getCount() + " to copy to calendar with ID " + targetCalendarId);
 
         // Result size should be 0 or 1
         if (cur.moveToNext()) {
@@ -128,13 +176,14 @@ public class CalendarService {
                 }
                 idx++;
             }
+            long sourceCalendar = values.getAsLong(Events.CALENDAR_ID);
             Log.d(DEBUG_TAG, "Set new calendar id");
-            values.put(Events.CALENDAR_ID, targetCalendar);
+            values.put(Events.CALENDAR_ID, targetCalendarId);
             Log.d(DEBUG_TAG, "ValuesBefore:" + values.toString());
             Log.d(DEBUG_TAG, "Check organizer");
             if (values.get(Events.ORGANIZER).equals(getCalendarById(previousCalendarId).getAccount())) {
                 Log.d(DEBUG_TAG, "Change organizer to target calendar's account");
-                String organizer = getCalendarById(targetCalendar).getAccount();
+                String organizer = getCalendarById(targetCalendarId).getAccount();
                 if (organizer.contains("@")) {
                     values.put(Events.ORGANIZER, organizer);
                 } else {
@@ -150,6 +199,19 @@ public class CalendarService {
                 return false;
             }
             long targetEventId = Long.parseLong(insertUri.getLastPathSegment());
+
+            ContentValues relation = new ContentValues();
+            relation.put(RelationDatabaseHelper.SOURCE_CALENDAR, sourceCalendar);
+            relation.put(RelationDatabaseHelper.SOURCE_EVENT, eventId);
+            relation.put(RelationDatabaseHelper.TARGET_CALENDAR, targetCalendarId);
+            relation.put(RelationDatabaseHelper.TARGET_EVENT, targetEventId);
+            long newRowId = relations.insert(RelationDatabaseHelper.TABLE_NAME, null, relation);
+
+            if (newRowId < 0) {
+                Log.w(DEBUG_TAG, "Relation creation failed!");
+                return false;
+            }
+
             if (! copyAttendees(eventId, targetEventId)) { return false; }
             return copyReminders(eventId, targetEventId);
         }
@@ -229,25 +291,49 @@ public class CalendarService {
 
     public List<String> getCalendarNames() {
         List<String> names = new ArrayList<>();
-        for (CalendarInfo calendar: calendars) {
+        for (CalendarInfo calendar: calendars.values()) {
             names.add(calendar.getName());
         }
         return names;
     }
 
     public List<Long> getCalendarIds() {
-        List<Long> ids = new ArrayList<>();
-        for (CalendarInfo calendar: calendars) {
-            ids.add(calendar.getId());
-        }
-        return ids;
+        return new ArrayList<>(calendars.keySet());
     }
 
     public CalendarInfo getCalendarById(long id) {
-        for (CalendarInfo calendar: calendars) {
+        for (CalendarInfo calendar: calendars.values()) {
             if (calendar.getId() == id) {return calendar;}
         }
         return null;
 
+    }
+
+    public void clearDatabase() throws SecurityException {
+        Cursor cur = relations.query(RelationDatabaseHelper.TABLE_NAME, RelationsInfo.PROJECTION, null, null,
+                null, null, null);
+        Set<Long> eventIds = new HashSet<>();
+        while(cur.moveToNext()) {
+            eventIds.add(cur.getLong(RelationsInfo.FIELDS.SOURCE_EVENT.ordinal()));
+            eventIds.add(cur.getLong(RelationsInfo.FIELDS.TARGET_EVENT.ordinal()));
+        }
+
+        String selection = Events._ID + "=?";
+        String deleteSelection = "((" + RelationDatabaseHelper.SOURCE_EVENT + "=?) OR (" +
+                RelationDatabaseHelper.TARGET_EVENT + "=?))";
+        ContentResolver cr = this.activity.getContentResolver();
+        for (long event: eventIds) {
+            String[] args = new String[]{Long.toString(event)};
+            cur = cr.query(Events.CONTENT_URI, EventSummary.PROJECTION, selection, args, null);
+            if (cur.getCount() == 0) {
+                String[] deleteArgs = new String[]{Long.toString(event), Long.toString(event)};
+                relations.delete(RelationDatabaseHelper.TABLE_NAME, deleteSelection, deleteArgs);
+            }
+
+        }
+    }
+
+    public void stop() {
+        dbHelper.close();
     }
 }

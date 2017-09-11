@@ -32,13 +32,16 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
     public static final String calendarMimeType = "text/x-vcalendar";
 
     public CalendarService service;
-
-    private long sourceCalendarId;
-    private long targetCalendarId;
     private SparseBooleanArray selectedEventsPos;
+    private EventAdapter eventAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
+        // // In case the database has to be reset
+        // this.deleteDatabase(RelationDatabaseHelper.DATABASE_NAME);
+
+
         Log.d(DEBUG_TAG, "onCreate() ...");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -49,9 +52,10 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
     }
 
     protected void runCalendarStuff() {
-        loadConfiguration();
+        selectedEventsPos = new SparseBooleanArray();
         service = new CalendarService(this);
         service.getCalendars();
+        loadConfiguration();
 
         // Initialize Copy Button
         Button buttonCopy = (Button) findViewById(R.id.buttonCopy);
@@ -60,9 +64,9 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
 
         // Set target calendar
         Spinner targetSpinner = (Spinner) findViewById(R.id.spinnerTargetCalendar);
-        ArrayAdapter<String> targetAdapter = new CalendarAdapter(this, service.calendars);
+        ArrayAdapter<String> targetAdapter = new CalendarAdapter(this, service.getCalendarInfos());
         targetSpinner.setAdapter(targetAdapter);
-        targetSpinner.setSelection(service.getCalendarIds().indexOf(targetCalendarId));
+        targetSpinner.setSelection(service.getCalendarIds().indexOf(service.targetCalendarId));
         targetSpinner.setOnItemSelectedListener(this);
 
         // Set event list
@@ -71,11 +75,11 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
 
         // Initialize source calender, set selection to trigger list update
         Spinner calendarSpinner = (Spinner) findViewById(R.id.spinnerSourceCalendar);
-        ArrayAdapter<String> calendarAdapter = new CalendarAdapter(this, service.calendars);
+        ArrayAdapter<String> calendarAdapter = new CalendarAdapter(this, service.getCalendarInfos());
         targetSpinner.setAdapter(targetAdapter);
         calendarSpinner.setAdapter(calendarAdapter);
         calendarSpinner.setOnItemSelectedListener(this);
-        calendarSpinner.setSelection(service.getCalendarIds().indexOf(sourceCalendarId));
+        calendarSpinner.setSelection(service.getCalendarIds().indexOf(service.sourceCalendarId));
     }
 
     @Override
@@ -108,31 +112,38 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
         int pos = adapterView.getSelectedItemPosition();
         if (adapterView.getId() == R.id.spinnerSourceCalendar) {
             Log.d(DEBUG_TAG, "Calendar selected: " + pos);
-            sourceCalendarId = service.calendars.get(pos).getId();
-            service.getEvents(sourceCalendarId);
-            List<String> eventNames = new ArrayList<String>();
-
-            for (EventSummary summary : service.events) {
-                eventNames.add(summary.toString());
-            }
-
-            ListView listEvents = (ListView) findViewById(R.id.listEvents);
-
-            // Specify the layout to use when the list of choices appears
-            ArrayAdapter<String> eventAdapter = new ArrayAdapter<>(this,
-                    android.R.layout.simple_list_item_multiple_choice, eventNames);
-            // Apply the adapter to the spinner
-            listEvents.setAdapter(eventAdapter);
+            service.sourceCalendarId = service.getCalendarIds().get(pos);
+            refreshList();
         } else if (adapterView.getId() == R.id.spinnerTargetCalendar) {
-            targetCalendarId = service.calendars.get(pos).getId();
+            service.targetCalendarId = service.getCalendarIds().get(pos);
+            refreshList();
             Log.d(DEBUG_TAG, "Target calendar selected");
         }
-        ((TextView) adapterView.getChildAt(0)).setTextColor(Color.rgb(255, 255, 255));
+        TextView tview = (TextView) adapterView.getChildAt(0);
+        if (tview != null) {
+            tview.setTextColor(Color.rgb(255, 255, 255));
+        }
     }
 
     @Override
     public void onNothingSelected(AdapterView<?> adapterView) {
 
+    }
+
+    private void refreshList() {
+        service.getEvents();
+        List<String> eventNames = new ArrayList<String>();
+
+        for (EventSummary summary : service.events) {
+            eventNames.add(summary.toString());
+        }
+
+        ListView listEvents = (ListView) findViewById(R.id.listEvents);
+
+        // Specify the layout to use when the list of choices appears
+        eventAdapter = new EventAdapter(this, service);
+        // Apply the adapter to the spinner
+        listEvents.setAdapter(eventAdapter);
     }
 
     @Override
@@ -141,17 +152,16 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
         for (int i=0, size = service.events.size(); i < size; ++i) {
             if (selectedEventsPos.get(i, false)) {
                 long eventId = service.events.get(i).getId();
-                service.copyEvent(eventId, targetCalendarId);
-                Log.i(DEBUG_TAG, "Copy event " + eventId + " to calendar " + targetCalendarId);
-                listEvents.setItemChecked(i, false);
+                Log.i(DEBUG_TAG, "Copy event " + eventId + " to calendar " + service.targetCalendarId);
+                service.copyEvent(eventId);
             }
         }
     }
 
     private void loadConfiguration() {
         SharedPreferences settings = getPreferences(MODE_PRIVATE);
-        sourceCalendarId = settings.getLong("lastSourceCalendarId", 0);
-        targetCalendarId = settings.getLong("lastTargetCalendarId", 0);
+        service.sourceCalendarId = settings.getLong("lastSourceCalendarId", 0);
+        service.targetCalendarId = settings.getLong("lastTargetCalendarId", 0);
     }
 
     @Override
@@ -162,11 +172,18 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
         // All objects are from android.context.Context
         SharedPreferences settings = getPreferences(MODE_PRIVATE);
         SharedPreferences.Editor editor = settings.edit();
-        editor.putLong("lastSourceCalendarId", sourceCalendarId);
-        editor.putLong("lastTargetCalendarId", targetCalendarId);
+        editor.putLong("lastSourceCalendarId", service.sourceCalendarId);
+        editor.putLong("lastTargetCalendarId", service.targetCalendarId);
 
         // Commit the edits!
+        service.clearDatabase();
         editor.commit();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        service.stop();
     }
 
     @Override

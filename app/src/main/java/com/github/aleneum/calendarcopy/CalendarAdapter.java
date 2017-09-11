@@ -46,7 +46,7 @@ public class CalendarAdapter extends ArrayAdapter<String>{
     private View decorateView(TextView view, int position) {
         view.setText(" " + view.getText());
         Drawable circle = ContextCompat.getDrawable(getContext(), R.drawable.circle);
-        circle.setColorFilter(mCalendars.get(position).color, PorterDuff.Mode.SRC_IN);
+        circle.setColorFilter(mCalendars.get(position).getColor(), PorterDuff.Mode.SRC_IN);
         view.setCompoundDrawablesWithIntrinsicBounds(circle, null, null, null);
         return view;
     }

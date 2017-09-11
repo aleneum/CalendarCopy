@@ -1,26 +1,35 @@
 package com.github.aleneum.calendarcopy;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.List;
+
 import android.provider.CalendarContract.Events;
 
 
 
 public class EventSummary {
-    public String[] info;
 
     // for sorting events by data
     public long dtstart;
+    public String[] info;
+    public long parentId;
+    public List<Long> childrenEventIds;
+    public List<Long> childrenCalendarIds;
 
     public static final String[] PROJECTION = {
             Events._ID, Events.TITLE, Events.DTSTART
     };
 
-    public static enum FIELDS {
+    public enum FIELDS {
         ID, TITLE, DTSTART
     }
 
     public EventSummary(String[] anInfo) {
         setInfo(anInfo);
+        parentId = -1;
+        childrenEventIds = new ArrayList<>();
+        childrenCalendarIds =  new ArrayList<>();
     }
 
     public void setInfo(String[] anInfo) {
@@ -36,5 +45,9 @@ public class EventSummary {
 
     public long getId() {
         return Long.parseLong(info[FIELDS.ID.ordinal()]);
+    }
+
+    public String getIdString() {
+        return info[FIELDS.ID.ordinal()];
     }
 }

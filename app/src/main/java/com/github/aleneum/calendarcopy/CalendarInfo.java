@@ -1,34 +1,41 @@
 package com.github.aleneum.calendarcopy;
 
+import android.provider.CalendarContract;
+
 /**
  * Created by alneuman on 06.09.17.
  */
 
 public class CalendarInfo {
-    private long id;
-    private String name;
-    private String account;
-    public int color;
+    public String[] info;
 
-    public CalendarInfo(long anId, String aName, String anAccout, int aColor) {
-        id = anId;
-        name = aName;
-        account = anAccout;
-        color = aColor;
+    public static final String[] PROJECTION = new String[]{
+            CalendarContract.Calendars._ID,                           // 0
+            CalendarContract.Calendars.ACCOUNT_NAME,                  // 1
+            CalendarContract.Calendars.CALENDAR_DISPLAY_NAME,         // 2
+            CalendarContract.Calendars.CALENDAR_COLOR                 // 3
+    };
+
+    public enum FIELDS {
+        ID, ACCOUNT_NAME, CALENDAR_DISPLAY_NAME, CALENDAR_COLOR
+    }
+
+    public CalendarInfo(String[] anInfo) {
+        setInfo(anInfo);
+    }
+
+    public void setInfo(String[] anInfo) {
+        info = anInfo;
     }
 
     @Override
     public String toString() {
-        return name + "(" + account + ")";
+        return getName() + "(" + getAccount() + ")";
     }
 
-    public long getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-    public String getAccount() {return account; }
+    public long getId() { return Long.parseLong(info[FIELDS.ID.ordinal()]); }
+    public int getColor() { return Integer.parseInt(info[FIELDS.CALENDAR_COLOR.ordinal()]); }
+    public String getName() { return info[FIELDS.CALENDAR_DISPLAY_NAME.ordinal()]; }
+    public String getAccount() {return info[FIELDS.ACCOUNT_NAME.ordinal()]; }
 
 }

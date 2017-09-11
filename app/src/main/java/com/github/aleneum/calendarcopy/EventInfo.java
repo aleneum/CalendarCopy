@@ -2,6 +2,9 @@ package com.github.aleneum.calendarcopy;
 
 import android.provider.CalendarContract.Events;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class EventInfo extends EventSummary {
 
     public static final String[] PROJECTION = {
@@ -26,5 +29,4 @@ public class EventInfo extends EventSummary {
     public EventInfo(String[] anInfo) {
         super(anInfo);
     }
-
 }
