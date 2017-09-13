@@ -13,7 +13,7 @@ import android.support.v4.content.ContextCompat;
 
 class Utils {
 
-    public static boolean checkPermissions(Activity activity) {
+    static boolean checkPermissions(Activity activity) {
         if ((ContextCompat.checkSelfPermission(activity, Manifest.permission.READ_CALENDAR)
                 != PackageManager.PERMISSION_GRANTED) ||
                 (ContextCompat.checkSelfPermission(activity, Manifest.permission.WRITE_CALENDAR)
@@ -37,6 +37,10 @@ class Utils {
         }
     }
 
+    /**
+     * Dialog meant to be shown in case a user does not grant permissions required to copy calendar
+     * events.
+     */
     public static class PermissionRequestDialog extends DialogFragment {
 
         @Override

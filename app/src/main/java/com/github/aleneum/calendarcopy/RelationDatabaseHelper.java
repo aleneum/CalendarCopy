@@ -5,14 +5,23 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
+/**
+ * DatabaseHelper for storing and querying event relation information.
+ */
 public class RelationDatabaseHelper extends SQLiteOpenHelper {
 
-    public static final String TABLE_NAME = "relations";
+    /** Unique ID of the relation */
     public static final String _ID = "id";
+    /** ID of the original event */
     public static final String SOURCE_EVENT = "SourceEvent";
+    /** Calendar ID associated with the original event */
     public static final String SOURCE_CALENDAR = "SourceCalendar";
+    /** ID of the event copy  */
     public static final String TARGET_EVENT = "TargetEvent";
+    /** Calendar ID associated with the event copy */
     public static final String TARGET_CALENDAR = "TargetCalendar";
+
+    static final String TABLE_NAME = "relations";
 
     private static final int DATABASE_VERSION = 2;
     private static final String DATABASE_NAME = "calendarcopy";

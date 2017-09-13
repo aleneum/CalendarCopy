@@ -17,12 +17,15 @@ import android.widget.Spinner;
 
 import com.github.aleneum.calendarcopy.models.EventSummary;
 
+/**
+ * Since this application is rather simple, the main activity represents the full copy cycle.
+ */
 public class MainActivity extends AppCompatActivity implements OnItemSelectedListener, View.OnClickListener,
         AdapterView.OnItemClickListener {
 
-    private static final String DEBUG_TAG = "ccopy.MainActivity";
-    public static final int REQUEST_PERMISSIONS = 0;
+    static final int REQUEST_PERMISSIONS = 0;
 
+    private static final String DEBUG_TAG = "ccopy.MainActivity";
     private CalendarService service;
     private SparseBooleanArray selectedEventsPos;
     private EventAdapter eventAdapter;
@@ -31,7 +34,6 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
     protected void onCreate(Bundle savedInstanceState) {
         // // In case the database has to be reset
         // this.deleteDatabase(RelationDatabaseHelper.DATABASE_NAME);
-
 
         Log.d(DEBUG_TAG, "onCreate() ...");
         super.onCreate(savedInstanceState);
@@ -102,12 +104,11 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
         if (adapterView.getId() == R.id.spinnerSourceCalendar) {
             Log.d(DEBUG_TAG, "Calendar selected: " + pos);
             service.sourceCalendarId = service.getCalendarIds().get(pos);
-            refreshList();
         } else if (adapterView.getId() == R.id.spinnerTargetCalendar) {
             service.targetCalendarId = service.getCalendarIds().get(pos);
-            refreshList();
             Log.d(DEBUG_TAG, "Target calendar selected");
         }
+        refreshList();
         findViewById(R.id.buttonCopy).setEnabled(
                 service.sourceCalendarId != service.targetCalendarId);
     }

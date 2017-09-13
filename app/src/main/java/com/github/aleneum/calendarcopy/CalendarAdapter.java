@@ -19,7 +19,7 @@ class CalendarAdapter extends ArrayAdapter<String>{
 
     private final List<CalendarInfo> mCalendars;
 
-    public CalendarAdapter(Context context, List<CalendarInfo> calendars) {
+    CalendarAdapter(Context context, List<CalendarInfo> calendars) {
         super(context, R.layout.calendar_spinner_entry);
         mCalendars = calendars;
         List<String> names = new ArrayList<>();
