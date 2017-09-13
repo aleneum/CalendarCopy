@@ -152,10 +152,10 @@ public class CalendarService {
         return null;
     }
 
-    public boolean copyEvent(long eventId) throws SecurityException {
+    public long copyEvent(long eventId) throws SecurityException {
         if (getEventById(eventId).childrenCalendarIds.contains(targetCalendarId)) {
             Log.d(DEBUG_TAG, "Event already in target calendar. Skip!");
-            return true;
+            return -1;
         }
 
         ContentResolver cr = this.activity.getContentResolver();
@@ -197,7 +197,7 @@ public class CalendarService {
             Uri insertUri = cr.insert(Events.CONTENT_URI, values);
             if (insertUri == null) {
                 Log.w(DEBUG_TAG, "Event creation failed!");
-                return false;
+                return -1;
             }
             long targetEventId = Long.parseLong(insertUri.getLastPathSegment());
 
@@ -210,13 +210,19 @@ public class CalendarService {
 
             if (newRowId < 0) {
                 Log.w(DEBUG_TAG, "Relation creation failed!");
-                return false;
             }
 
-            if (! copyAttendees(eventId, targetEventId)) { return false; }
-            return copyReminders(eventId, targetEventId);
+            if (! copyAttendees(eventId, targetEventId)) {
+                Log.w(DEBUG_TAG, "Creating attendees  failed!");
+            }
+
+            if (! copyReminders(eventId, targetEventId)){
+                Log.w(DEBUG_TAG, "Creating reminders  failed!");
+            }
+
+            return targetEventId;
         }
-        return false;
+        return -1;
     }
 
     private boolean copyAttendees(long sourceEventId, long targetEventId) throws SecurityException {

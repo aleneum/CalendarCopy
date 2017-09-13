@@ -36,7 +36,6 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-
         // // In case the database has to be reset
         // this.deleteDatabase(RelationDatabaseHelper.DATABASE_NAME);
 
@@ -53,6 +52,7 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
     protected void runCalendarStuff() {
         selectedEventsPos = new SparseBooleanArray();
         service = new CalendarService(this);
+        service.clearDatabase();
         service.getCalendars();
         loadConfiguration();
 
@@ -122,7 +122,7 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
         if (tview != null) {
             tview.setTextColor(Color.rgb(255, 255, 255));
         }
-        ((Button) findViewById(R.id.buttonCopy)).setEnabled(
+        findViewById(R.id.buttonCopy).setEnabled(
                 service.sourceCalendarId != service.targetCalendarId);
     }
 
@@ -149,14 +149,20 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
 
     @Override
     public void onClick(View view) {
-        ListView listEvents = (ListView) findViewById(R.id.listEvents);
         for (int i=0, size = service.events.size(); i < size; ++i) {
             if (selectedEventsPos.get(i, false)) {
                 long eventId = service.events.get(i).getId();
                 Log.i(DEBUG_TAG, "Copy event " + eventId + " to calendar " + service.targetCalendarId);
-                service.copyEvent(eventId);
+                long targetEventId = service.copyEvent(eventId);
+                if (targetEventId > -1) {
+                    EventSummary summary = service.getEventById(eventId);
+                    summary.childrenEventIds.add(targetEventId);
+                    summary.childrenCalendarIds.add(service.targetCalendarId);
+                }
             }
         }
+        eventAdapter.notifyDataSetChanged();
+        ((ListView) findViewById(R.id.listEvents)).invalidateViews();
     }
 
     private void loadConfiguration() {
@@ -177,7 +183,6 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
         editor.putLong("lastTargetCalendarId", service.targetCalendarId);
 
         // Commit the edits!
-        service.clearDatabase();
         editor.commit();
     }
 
