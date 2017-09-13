@@ -5,10 +5,6 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
-/**
- * Created by alneuman on 11.09.17.
- */
-
 public class RelationDatabaseHelper extends SQLiteOpenHelper {
 
     public static final String TABLE_NAME = "relations";
@@ -19,7 +15,7 @@ public class RelationDatabaseHelper extends SQLiteOpenHelper {
     public static final String TARGET_CALENDAR = "TargetCalendar";
 
     private static final int DATABASE_VERSION = 2;
-    public static final String DATABASE_NAME = "calendarcopy";
+    private static final String DATABASE_NAME = "calendarcopy";
     private static final String TABLE_CREATE = " CREATE TABLE " + TABLE_NAME + " ( " +
             _ID + " INT PRIMARY KEY, "+
             SOURCE_EVENT + " Long NOT NULL, " +

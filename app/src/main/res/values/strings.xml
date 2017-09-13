@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">CalendarCopy</string>
-    <string name="copyButton">Copy</string>
+    <string name="copy_button">Copy</string>
+    <string name="okay">Okay</string>
+    <string name="cancel">Cancel</string>
+    <string name="permission_request">Can I Haz Permission?</string>
 </resources>

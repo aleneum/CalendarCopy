@@ -6,72 +6,58 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
-import android.provider.CalendarContract.Reminders;
 import android.provider.CalendarContract.Attendees;
 import android.provider.CalendarContract.Calendars;
 import android.provider.CalendarContract.Events;
+import android.provider.CalendarContract.Reminders;
 import android.util.Log;
+
+import com.github.aleneum.calendarcopy.models.AttendeeInfo;
+import com.github.aleneum.calendarcopy.models.CalendarInfo;
+import com.github.aleneum.calendarcopy.models.EventInfo;
+import com.github.aleneum.calendarcopy.models.EventSummary;
+import com.github.aleneum.calendarcopy.models.RelationsInfo;
+import com.github.aleneum.calendarcopy.models.ReminderInfo;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 
 
-public class CalendarService {
+class CalendarService {
 
-    public Activity activity;
-    public List<EventSummary> events;
-    public SQLiteDatabase relations;
-    public RelationDatabaseHelper dbHelper;
-    public long sourceCalendarId;
-    public long targetCalendarId;
+    final Activity activity;
+    List<EventSummary> events;
+    long sourceCalendarId;
+    long targetCalendarId;
 
+    private final SQLiteDatabase relations;
+    private final RelationDatabaseHelper dbHelper;
     private LinkedHashMap<Long, CalendarInfo> calendars;
 
 
     // Projection array. Creating indices for this array instead of doing
     // dynamic lookups improves performance.
 
-    private static List<String> blacklist = Arrays.asList(
-            EventInfo.PROJECTION[EventInfo.FIELDS.ID.ordinal()],
-            AttendeeInfo.PROJECTION[AttendeeInfo.FIELDS.EVENT_ID.ordinal()],
-            ReminderInfo.PROJECTION[ReminderInfo.FIELDS.EVENT_ID.ordinal()]
+    private final static List<String> blacklist = Arrays.asList(
+            EventInfo.PROJECTION[EventInfo.ID],
+            AttendeeInfo.PROJECTION[AttendeeInfo.EVENT_ID],
+            ReminderInfo.PROJECTION[ReminderInfo.EVENT_ID]
     );
 
     private static final String DEBUG_TAG = "ccopy.CalendarService";
-    public static final int MAX_EVENT_ENTRIES = 20;
+    private static final int MAX_EVENT_ENTRIES = 20;
 
-    public static Comparator<EventSummary> eventSummaryComparator = new Comparator<EventSummary>() {
-        @Override
-        public int compare(EventSummary e1, EventSummary e2) {
-            if (e1.dtstart > e1.dtstart)
-                return 1;
-            if (e1.dtstart < e2.dtstart)
-                return -1;
-            return 0;
-        }
-    };
-
-    public CalendarInfo getCalendarInfoById(Long id) {
-        return calendars.get(id);
-    }
-
-    public CalendarInfo getCalendarInfoByIndex(int pos) {
-        return (CalendarInfo) calendars.values().toArray()[pos];
-    }
-
-    public List<CalendarInfo> getCalendarInfos() {
+    List<CalendarInfo> getCalendarInfo() {
         return new ArrayList<>(calendars.values());
     }
 
 
-    public CalendarService(Activity anActivity) {
+    CalendarService(Activity anActivity) {
         activity = anActivity;
         calendars = new LinkedHashMap<>();
         events = new ArrayList<>();
@@ -79,12 +65,12 @@ public class CalendarService {
         relations = dbHelper.getWritableDatabase();
     }
 
-    public void getCalendars() throws SecurityException {
+    void getCalendars() throws SecurityException {
         Log.d(DEBUG_TAG, "queryCalendar() called...");
         ContentResolver cr = activity.getContentResolver();
         Uri uri = Calendars.CONTENT_URI;
         Cursor cur = cr.query(uri, CalendarInfo.PROJECTION, null, null, null);
-        // Use the cursor to step through the returned records
+        assert cur != null;
         Log.d(DEBUG_TAG, "Received " + cur.getCount() + " results");
         calendars = new LinkedHashMap<>();
         while (cur.moveToNext()) {
@@ -108,6 +94,7 @@ public class CalendarService {
 
         Cursor cur = cr.query(Events.CONTENT_URI, EventSummary.PROJECTION, selection, selectionArgs,
                 Events.DTSTART + " LIMIT " + MAX_EVENT_ENTRIES);
+        assert cur != null;
         Log.d(DEBUG_TAG, "Received " + cur.getCount() + " events");
         events = new ArrayList<>();
         while (cur.moveToNext()) {
@@ -152,7 +139,7 @@ public class CalendarService {
         return null;
     }
 
-    public long copyEvent(long eventId) throws SecurityException {
+    long copyEvent(long eventId) throws SecurityException {
         if (getEventById(eventId).childrenCalendarIds.contains(targetCalendarId)) {
             Log.d(DEBUG_TAG, "Event already in target calendar. Skip!");
             return -1;
@@ -163,12 +150,13 @@ public class CalendarService {
         String[] selectionArgs = new String[]{Long.toString(eventId)};
 
         Cursor cur = cr.query(Events.CONTENT_URI, EventInfo.PROJECTION, selection, selectionArgs, null);
+        assert cur != null;
         Log.d(DEBUG_TAG, "Got " + cur.getCount() + " to copy to calendar with ID " + targetCalendarId);
 
         // Result size should be 0 or 1
         if (cur.moveToNext()) {
             ContentValues values = new ContentValues();
-            long previousCalendarId = cur.getLong(EventInfo.FIELDS.CALENDAR_ID.ordinal());
+            long previousCalendarId = cur.getLong(EventInfo.CALENDAR_ID);
             int idx = 0;
             for(String field: EventInfo.PROJECTION) {
                 if (! blacklist.contains(field)) {
@@ -222,69 +210,86 @@ public class CalendarService {
 
             return targetEventId;
         }
+        cur.close();
         return -1;
     }
 
     private boolean copyAttendees(long sourceEventId, long targetEventId) throws SecurityException {
+        boolean success = true;
         ContentResolver cr = this.activity.getContentResolver();
         String selection = "(" + Attendees.EVENT_ID + " = ?)";
         String[] selectionArgs = new String[]{Long.toString(sourceEventId)};
 
         Cursor cur = cr.query(Attendees.CONTENT_URI, AttendeeInfo.PROJECTION,
                 selection, selectionArgs, null);
+        assert cur != null;
         Log.d(DEBUG_TAG, "Got " + cur.getCount() + " Attendees to copy to event " + targetEventId);
 
-        if (cur.moveToNext()) {
-            ContentValues values = new ContentValues();
-            int idx = 0;
-            for(String field: AttendeeInfo.PROJECTION) {
-                if (!blacklist.contains(field)) {
-                    Log.d(DEBUG_TAG, "Copy attendee field " + field);
-                    values.put(field, cur.getString(idx));
+
+        try {
+            if (cur.moveToNext()) {
+                ContentValues values = new ContentValues();
+                int idx = 0;
+                for (String field : AttendeeInfo.PROJECTION) {
+                    if (!blacklist.contains(field)) {
+                        Log.d(DEBUG_TAG, "Copy attendee field " + field);
+                        values.put(field, cur.getString(idx));
+                    }
+                    idx++;
                 }
-                idx++;
+                Log.d(DEBUG_TAG, "Set new event id");
+                values.put(AttendeeInfo.PROJECTION[AttendeeInfo.EVENT_ID],
+                        targetEventId);
+                Log.d(DEBUG_TAG, "Insert new attendee " + values.toString());
+                Uri insertUri = cr.insert(Attendees.CONTENT_URI, values);
+                if (insertUri == null) {
+                    throw new IllegalArgumentException("Attendee creation failed!");
+                }
             }
-            Log.d(DEBUG_TAG, "Set new event id");
-            values.put(AttendeeInfo.PROJECTION[AttendeeInfo.FIELDS.EVENT_ID.ordinal()], targetEventId);
-            Log.d(DEBUG_TAG, "Insert new attendee " + values.toString());
-            Uri insertUri = cr.insert(Attendees.CONTENT_URI, values);
-            if (insertUri == null) {
-                Log.w(DEBUG_TAG, "Attendee creation failed!");
-                return false;
-            }
+        } catch (IllegalArgumentException err) {
+            Log.d(DEBUG_TAG, err.toString());
+            success = false;
         }
-        return true;
+        cur.close();
+        return success;
     }
 
     private boolean copyReminders(long sourceEventId, long targetEventId) throws SecurityException {
+        boolean success = true;
         ContentResolver cr = this.activity.getContentResolver();
         String selection = "(" + Reminders.EVENT_ID + " = ?)";
         String[] selectionArgs = new String[]{Long.toString(sourceEventId)};
 
         Cursor cur = cr.query(Reminders.CONTENT_URI, ReminderInfo.PROJECTION,
                 selection, selectionArgs, null);
+        assert cur != null;
         Log.d(DEBUG_TAG, "Got " + cur.getCount() + " Reminders to copy to event " + targetEventId);
 
-        if (cur.moveToNext()) {
-            ContentValues values = new ContentValues();
-            int idx = 0;
-            for(String field: ReminderInfo.PROJECTION) {
-                if (!blacklist.contains(field)) {
-                    Log.d(DEBUG_TAG, "Copy reminder field " + field);
-                    values.put(field, cur.getString(idx));
+        try {
+            if (cur.moveToNext()) {
+                ContentValues values = new ContentValues();
+                int idx = 0;
+                for(String field: ReminderInfo.PROJECTION) {
+                    if (!blacklist.contains(field)) {
+                        Log.d(DEBUG_TAG, "Copy reminder field " + field);
+                        values.put(field, cur.getString(idx));
+                    }
+                    idx++;
                 }
-                idx++;
+                Log.d(DEBUG_TAG, "Set new event id");
+                values.put(ReminderInfo.PROJECTION[ReminderInfo.EVENT_ID], targetEventId);
+                Log.d(DEBUG_TAG, "Insert new reminder " + values.toString());
+                Uri insertUri = cr.insert(Reminders.CONTENT_URI, values);
+                if (insertUri == null) {
+                    throw new IllegalArgumentException("Reminder creation failed!");
+                }
             }
-            Log.d(DEBUG_TAG, "Set new event id");
-            values.put(ReminderInfo.PROJECTION[ReminderInfo.FIELDS.EVENT_ID.ordinal()], targetEventId);
-            Log.d(DEBUG_TAG, "Insert new reminder " + values.toString());
-            Uri insertUri = cr.insert(Reminders.CONTENT_URI, values);
-            if (insertUri == null) {
-                Log.w(DEBUG_TAG, "Reminder creation failed!");
-                return false;
-            }
+        } catch (IllegalArgumentException err) {
+            Log.w(DEBUG_TAG, err.toString());
+            success = false;
         }
-        return true;
+        cur.close();
+        return success;
     }
 
     private String[] cursorToArray(Cursor cur) {
@@ -296,19 +301,11 @@ public class CalendarService {
         return result.toArray(new String[cur.getColumnCount()]);
     }
 
-    public List<String> getCalendarNames() {
-        List<String> names = new ArrayList<>();
-        for (CalendarInfo calendar: calendars.values()) {
-            names.add(calendar.getName());
-        }
-        return names;
-    }
-
-    public List<Long> getCalendarIds() {
+    List<Long> getCalendarIds() {
         return new ArrayList<>(calendars.keySet());
     }
 
-    public CalendarInfo getCalendarById(long id) {
+    CalendarInfo getCalendarById(long id) {
         for (CalendarInfo calendar: calendars.values()) {
             if (calendar.getId() == id) {return calendar;}
         }
@@ -316,14 +313,15 @@ public class CalendarService {
 
     }
 
-    public void clearDatabase() throws SecurityException {
+    void clearDatabase() throws SecurityException {
         Cursor cur = relations.query(RelationDatabaseHelper.TABLE_NAME, RelationsInfo.PROJECTION, null, null,
                 null, null, null);
         Set<Long> eventIds = new HashSet<>();
         while(cur.moveToNext()) {
-            eventIds.add(cur.getLong(RelationsInfo.FIELDS.SOURCE_EVENT.ordinal()));
-            eventIds.add(cur.getLong(RelationsInfo.FIELDS.TARGET_EVENT.ordinal()));
+            eventIds.add(cur.getLong(RelationsInfo.SOURCE_EVENT));
+            eventIds.add(cur.getLong(RelationsInfo.TARGET_EVENT));
         }
+        cur.close();
 
         String selection = Events._ID + "=?";
         String deleteSelection = "((" + RelationDatabaseHelper.SOURCE_EVENT + "=?) OR (" +
@@ -332,15 +330,16 @@ public class CalendarService {
         for (long event: eventIds) {
             String[] args = new String[]{Long.toString(event)};
             cur = cr.query(Events.CONTENT_URI, EventSummary.PROJECTION, selection, args, null);
+            assert cur != null;
             if (cur.getCount() == 0) {
                 String[] deleteArgs = new String[]{Long.toString(event), Long.toString(event)};
                 relations.delete(RelationDatabaseHelper.TABLE_NAME, deleteSelection, deleteArgs);
             }
-
+            cur.close();
         }
     }
 
-    public void stop() {
+    void stop() {
         dbHelper.close();
     }
 }

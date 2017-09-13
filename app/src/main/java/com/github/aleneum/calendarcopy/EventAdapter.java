@@ -6,30 +6,29 @@ import android.graphics.Canvas;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.content.res.AppCompatResources;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.CheckedTextView;
 import android.widget.ListView;
-import android.widget.TextView;
+
+import com.github.aleneum.calendarcopy.models.EventSummary;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Created by alneuman on 11.09.17.
- */
 
-public class EventAdapter extends ArrayAdapter<String>{
+class EventAdapter extends ArrayAdapter<String>{
 
-    private final String DEBUG_TAG = "ccopy.EventAdapter";
-    private CalendarService service;
+    private static final String DEBUG_TAG = "ccopy.EventAdapter";
+    private static final int BASE_LAYOUT = android.R.layout.simple_list_item_multiple_choice;
+    private final CalendarService service;
 
-    public EventAdapter(Context context, CalendarService aService) {
-        super(context, android.R.layout.simple_list_item_multiple_choice);
+    EventAdapter(Context context, CalendarService aService) {
+        super(context, BASE_LAYOUT);
         service = aService;
         List<String> names = new ArrayList<>();
         for (EventSummary event: aService.events) {
@@ -45,8 +44,9 @@ public class EventAdapter extends ArrayAdapter<String>{
         return ! childrenIds.contains(service.targetCalendarId);
     }
 
+    @NonNull
     @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
+    public View getView(int position, View convertView, @NonNull ViewGroup parent) {
         CheckedTextView view = (CheckedTextView) super.getView(position, convertView, parent);
         EventSummary summary = service.events.get(position);
         List<Long> childrenIds = new ArrayList<>(summary.childrenCalendarIds);
@@ -61,7 +61,7 @@ public class EventAdapter extends ArrayAdapter<String>{
         List<Drawable> children = new ArrayList<>();
 
         if (summary.parentCalendarId > -1) {
-            Log.d(DEBUG_TAG, summary.parentId + "");
+            Log.d(DEBUG_TAG, "Add parent circle for " + summary.parentId);
             Drawable circle = ContextCompat.getDrawable(getContext(), R.drawable.outlined_circle);
             circle.setColorFilter(service.getCalendarById(summary.parentCalendarId).getColor(),
                     PorterDuff.Mode.MULTIPLY);
@@ -69,6 +69,7 @@ public class EventAdapter extends ArrayAdapter<String>{
         }
 
         for (long child: childrenIds) {
+            Log.d(DEBUG_TAG, "Add child circle for " + child);
             Drawable circle = ContextCompat.getDrawable(getContext(), R.drawable.circle);
             circle.setColorFilter(service.getCalendarById(child).getColor(), PorterDuff.Mode.SRC_IN);
             children.add(circle);

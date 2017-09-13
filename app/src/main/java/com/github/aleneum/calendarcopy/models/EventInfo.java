@@ -1,11 +1,8 @@
-package com.github.aleneum.calendarcopy;
+package com.github.aleneum.calendarcopy.models;
 
 import android.provider.CalendarContract.Events;
 
-import java.util.ArrayList;
-import java.util.List;
-
-public class EventInfo extends EventSummary {
+public class EventInfo {
 
     public static final String[] PROJECTION = {
             Events._ID, Events.CALENDAR_ID, Events.ORGANIZER, Events.TITLE, Events.EVENT_LOCATION,
@@ -18,15 +15,6 @@ public class EventInfo extends EventSummary {
             Events.CUSTOM_APP_URI, Events.UID_2445
     };
 
-    public static enum FIELDS {
-        ID, CALENDAR_ID, ORGANIZER, TITLE, EVENT_LOCATION, DESCRIPTION, EVENT_COLOR, DTSTART, DTEND,
-        EVENT_TIMEZONE, EVENT_END_TIMEZONE, DURATION, ALL_DAY, RRULE, RDATE, EXRULE, EXDATE,
-        ORIGINAL_ID, ORIGINAL_SYNC_ID, ORIGINAL_INSTANCE_TIME, ORIGINAL_ALL_DAY, ACCESS_LEVEL,
-        AVAILABILITY, GUESTS_CAN_MODIFY, GUESTS_CAN_INVITE_OTHERS, GUESTS_CAN_SEE_GUESTS,
-        CUSTOM_APP_PACKAGE, CUSTOM_APP_URI, UID_2445
-    }
-
-    public EventInfo(String[] anInfo) {
-        super(anInfo);
-    }
+    public final static int ID = 0;
+    public final static int CALENDAR_ID = 1;
 }

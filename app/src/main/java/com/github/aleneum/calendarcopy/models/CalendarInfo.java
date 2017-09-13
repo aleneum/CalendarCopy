@@ -1,13 +1,8 @@
-package com.github.aleneum.calendarcopy;
+package com.github.aleneum.calendarcopy.models;
 
 import android.provider.CalendarContract;
 
-/**
- * Created by alneuman on 06.09.17.
- */
-
-public class CalendarInfo {
-    public String[] info;
+public class CalendarInfo extends ModelBase {
 
     public static final String[] PROJECTION = new String[]{
             CalendarContract.Calendars._ID,                           // 0
@@ -21,12 +16,9 @@ public class CalendarInfo {
     }
 
     public CalendarInfo(String[] anInfo) {
-        setInfo(anInfo);
+        super(anInfo);
     }
 
-    public void setInfo(String[] anInfo) {
-        info = anInfo;
-    }
 
     @Override
     public String toString() {

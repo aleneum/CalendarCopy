@@ -1,22 +1,22 @@
-package com.github.aleneum.calendarcopy;
+package com.github.aleneum.calendarcopy.models;
+
+import android.provider.CalendarContract.Events;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
-
-import android.provider.CalendarContract.Events;
-
+import java.util.Locale;
 
 
-public class EventSummary {
+public class EventSummary extends ModelBase {
 
     // for sorting events by data
-    public long dtstart;
-    public String[] info;
     public long parentId;
     public long parentCalendarId;
-    public List<Long> childrenEventIds;
-    public List<Long> childrenCalendarIds;
+    public final List<Long> childrenEventIds;
+    public final List<Long> childrenCalendarIds;
+
+    private long dtstart;
 
     public static final String[] PROJECTION = {
             Events._ID, Events.TITLE, Events.DTSTART
@@ -27,21 +27,22 @@ public class EventSummary {
     }
 
     public EventSummary(String[] anInfo) {
-        setInfo(anInfo);
+        super(anInfo);
         parentId = -1;
         parentCalendarId = -1;
         childrenEventIds = new ArrayList<>();
         childrenCalendarIds =  new ArrayList<>();
     }
 
+    @Override
     public void setInfo(String[] anInfo) {
-        info = anInfo;
+        super.setInfo(anInfo);
         dtstart = Long.parseLong(info[FIELDS.DTSTART.ordinal()]);
     }
 
     @Override
     public String toString() {
-        return new SimpleDateFormat("dd.MM. (HH:mm) ").format(dtstart)
+        return new SimpleDateFormat("dd.MM. (HH:mm) ", Locale.getDefault()).format(dtstart)
                 + info[FIELDS.TITLE.ordinal()];
     }
 
