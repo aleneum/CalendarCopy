@@ -14,6 +14,7 @@ public class EventSummary {
     public long dtstart;
     public String[] info;
     public long parentId;
+    public long parentCalendarId;
     public List<Long> childrenEventIds;
     public List<Long> childrenCalendarIds;
 
@@ -28,6 +29,7 @@ public class EventSummary {
     public EventSummary(String[] anInfo) {
         setInfo(anInfo);
         parentId = -1;
+        parentCalendarId = -1;
         childrenEventIds = new ArrayList<>();
         childrenCalendarIds =  new ArrayList<>();
     }

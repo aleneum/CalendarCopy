@@ -45,6 +45,7 @@ public class CalendarService {
     );
 
     private static final String DEBUG_TAG = "ccopy.CalendarService";
+    public static final int MAX_EVENT_ENTRIES = 20;
 
     public static Comparator<EventSummary> eventSummaryComparator = new Comparator<EventSummary>() {
         @Override
@@ -95,19 +96,18 @@ public class CalendarService {
     void getEvents() throws SecurityException {
         Calendar beginTime = Calendar.getInstance();
         beginTime.set(Calendar.HOUR_OF_DAY, 0);
-        Calendar endTime = Calendar.getInstance();
-        endTime.add(Calendar.DAY_OF_MONTH, 28);
 
         ContentResolver cr = this.activity.getContentResolver();
         String selection = "((" + Events.DTSTART + " >= ?) AND "
-                + "(" + Events.DTEND + " <= ?) AND (" + Events.CALENDAR_ID + " = ?))";
+                + " (" + Events.CALENDAR_ID + " = ?))";
 
         String[] selectionArgs = new String[]{Long.toString(beginTime.getTimeInMillis()),
-                Long.toString(endTime.getTimeInMillis()), Long.toString(sourceCalendarId)};
+                Long.toString(sourceCalendarId)};
 
         Log.d(DEBUG_TAG, "Event query args:" + Arrays.toString(selectionArgs));
 
-        Cursor cur = cr.query(Events.CONTENT_URI, EventSummary.PROJECTION, selection, selectionArgs, null);
+        Cursor cur = cr.query(Events.CONTENT_URI, EventSummary.PROJECTION, selection, selectionArgs,
+                Events.DTSTART + " LIMIT " + MAX_EVENT_ENTRIES);
         Log.d(DEBUG_TAG, "Received " + cur.getCount() + " events");
         events = new ArrayList<>();
         while (cur.moveToNext()) {
@@ -121,6 +121,7 @@ public class CalendarService {
             if (parentCur.moveToNext()) {
                 RelationsInfo relations = new RelationsInfo(cursorToArray(parentCur));
                 summary.parentId = relations.getSourceEvent();
+                summary.parentCalendarId = relations.getSourceCalendar();
             }
 
             String childrenSelection = "(" + RelationDatabaseHelper.SOURCE_EVENT + " = ?)";
@@ -139,7 +140,7 @@ public class CalendarService {
 
             events.add(summary);
         }
-        Collections.sort(events, eventSummaryComparator);
+        //Collections.sort(events, eventSummaryComparator);
     }
 
     EventSummary getEventById(long eventId) {

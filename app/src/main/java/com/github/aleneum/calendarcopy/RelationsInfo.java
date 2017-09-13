@@ -35,6 +35,10 @@ public class RelationsInfo {
         return Long.parseLong(info[FIELDS.SOURCE_EVENT.ordinal()]);
     }
 
+    public long getSourceCalendar() {
+        return Long.parseLong(info[FIELDS.SOURCE_CALENDAR.ordinal()]);
+    }
+
     public long getTargetEvent() {
         return Long.parseLong(info[FIELDS.TARGET_EVENT.ordinal()]);
     }

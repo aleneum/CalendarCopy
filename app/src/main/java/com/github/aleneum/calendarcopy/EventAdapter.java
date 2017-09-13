@@ -25,6 +25,7 @@ import java.util.List;
 
 public class EventAdapter extends ArrayAdapter<String>{
 
+    private final String DEBUG_TAG = "ccopy.EventAdapter";
     private CalendarService service;
 
     public EventAdapter(Context context, CalendarService aService) {
@@ -38,16 +39,35 @@ public class EventAdapter extends ArrayAdapter<String>{
     }
 
     @Override
+    public boolean isEnabled(int position) {
+        EventSummary summary = service.events.get(position);
+        List<Long> childrenIds = new ArrayList<>(summary.childrenCalendarIds);
+        return ! childrenIds.contains(service.targetCalendarId);
+    }
+
+    @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         CheckedTextView view = (CheckedTextView) super.getView(position, convertView, parent);
         EventSummary summary = service.events.get(position);
         List<Long> childrenIds = new ArrayList<>(summary.childrenCalendarIds);
         if (childrenIds.contains(service.targetCalendarId)) {
             ((ListView)parent).setItemChecked(position, true);
-            //childrenIds.remove(service.targetCalendarId);
+            view.setEnabled(false);
+            childrenIds.remove(service.targetCalendarId);
+        } else {
+            view.setEnabled(true);
         }
 
         List<Drawable> children = new ArrayList<>();
+
+        if (summary.parentCalendarId > -1) {
+            Log.d(DEBUG_TAG, summary.parentId + "");
+            Drawable circle = ContextCompat.getDrawable(getContext(), R.drawable.outlined_circle);
+            circle.setColorFilter(service.getCalendarById(summary.parentCalendarId).getColor(),
+                    PorterDuff.Mode.MULTIPLY);
+            children.add(circle);
+        }
+
         for (long child: childrenIds) {
             Drawable circle = ContextCompat.getDrawable(getContext(), R.drawable.circle);
             circle.setColorFilter(service.getCalendarById(child).getColor(), PorterDuff.Mode.SRC_IN);

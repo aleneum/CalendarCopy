@@ -21,8 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-// TODO: Add SQL-DB to keep track of copied events (parent/child)
-// TODO: Check how to add coloured circles to a TextView Item of a spinner.
+// TODO: Add parent circle
 public class MainActivity extends AppCompatActivity implements OnItemSelectedListener, View.OnClickListener,
         AdapterView.OnItemClickListener {
 
@@ -66,8 +65,8 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
         Spinner targetSpinner = (Spinner) findViewById(R.id.spinnerTargetCalendar);
         ArrayAdapter<String> targetAdapter = new CalendarAdapter(this, service.getCalendarInfos());
         targetSpinner.setAdapter(targetAdapter);
-        targetSpinner.setSelection(service.getCalendarIds().indexOf(service.targetCalendarId));
         targetSpinner.setOnItemSelectedListener(this);
+        targetSpinner.setSelection(service.getCalendarIds().indexOf(service.targetCalendarId));
 
         // Set event list
         ListView listEvents = (ListView) findViewById(R.id.listEvents);
@@ -123,6 +122,8 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
         if (tview != null) {
             tview.setTextColor(Color.rgb(255, 255, 255));
         }
+        ((Button) findViewById(R.id.buttonCopy)).setEnabled(
+                service.sourceCalendarId != service.targetCalendarId);
     }
 
     @Override
