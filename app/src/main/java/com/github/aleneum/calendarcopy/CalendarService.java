@@ -2,6 +2,7 @@ package com.github.aleneum.calendarcopy;
 
 import android.app.Activity;
 import android.content.ContentResolver;
+import android.content.ContentUris;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -10,6 +11,7 @@ import android.provider.CalendarContract.Attendees;
 import android.provider.CalendarContract.Calendars;
 import android.provider.CalendarContract.Events;
 import android.provider.CalendarContract.Reminders;
+import android.provider.CalendarContract.Instances;
 import android.util.Log;
 
 import com.github.aleneum.calendarcopy.models.AttendeeInfo;
@@ -49,8 +51,12 @@ class CalendarService {
             ReminderInfo.PROJECTION[ReminderInfo.EVENT_ID]
     );
 
+    private static final String[] EVENT_ID_PROJECTION = {
+            Events._ID
+    };
+
     private static final String DEBUG_TAG = "ccopy.CalendarService";
-    private static final int MAX_EVENT_ENTRIES = 20;
+    private static final int MAX_EVENT_ENTRIES = 30;
 
     List<CalendarInfo> getCalendarInfo() {
         return new ArrayList<>(calendars.values());
@@ -82,18 +88,23 @@ class CalendarService {
     void getEvents() throws SecurityException {
         Calendar beginTime = Calendar.getInstance();
         beginTime.set(Calendar.HOUR_OF_DAY, 0);
+        Calendar endTime = (Calendar) beginTime.clone();
+        endTime.add(Calendar.MONTH, 1);
+
+        Uri.Builder builder = Instances.CONTENT_URI.buildUpon();
+        ContentUris.appendId(builder, beginTime.getTimeInMillis());
+        ContentUris.appendId(builder, endTime.getTimeInMillis());
+
 
         ContentResolver cr = this.activity.getContentResolver();
-        String selection = "((" + Events.DTSTART + " >= ?) AND "
-                + " (" + Events.CALENDAR_ID + " = ?))";
+        String selection = " (" + Instances.CALENDAR_ID + " = ?)";
 
-        String[] selectionArgs = new String[]{Long.toString(beginTime.getTimeInMillis()),
-                Long.toString(sourceCalendarId)};
+        String[] selectionArgs = new String[]{Long.toString(sourceCalendarId)};
 
         Log.d(DEBUG_TAG, "Event query args:" + Arrays.toString(selectionArgs));
 
-        Cursor cur = cr.query(Events.CONTENT_URI, EventSummary.PROJECTION, selection, selectionArgs,
-                Events.DTSTART + " LIMIT " + MAX_EVENT_ENTRIES);
+        Cursor cur = cr.query(builder.build(), EventSummary.PROJECTION, selection, selectionArgs,
+                Instances.BEGIN + " LIMIT " + MAX_EVENT_ENTRIES);
         assert cur != null;
         Log.d(DEBUG_TAG, "Received " + cur.getCount() + " events");
         events = new ArrayList<>();
@@ -121,26 +132,23 @@ class CalendarService {
                 summary.childrenCalendarIds.add(relations.getTargetCalendar());
             }
 
-//            Log.i(DEBUG_TAG, "Event: " + summary.toString());
-//            Log.i(DEBUG_TAG, "  parent: " + summary.parentId);
-//            Log.i(DEBUG_TAG, "  children: " + summary.childrenEventIds);
-
             events.add(summary);
         }
-        //Collections.sort(events, eventSummaryComparator);
     }
 
-    EventSummary getEventById(long eventId) {
+    /** One event can have more than one instance */
+    List<EventSummary> getEventsById(long eventId) {
+        List<EventSummary> result = new ArrayList<>();
         for (EventSummary summary: events) {
             if (summary.getId() == eventId) {
-                return summary;
+                result.add(summary);
             }
         }
-        return null;
+        return result;
     }
 
     long copyEvent(long eventId) throws SecurityException {
-        if (getEventById(eventId).childrenCalendarIds.contains(targetCalendarId)) {
+        if (getEventsById(eventId).get(0).childrenCalendarIds.contains(targetCalendarId)) {
             Log.d(DEBUG_TAG, "Event already in target calendar. Skip!");
             return -1;
         }
@@ -329,7 +337,7 @@ class CalendarService {
         ContentResolver cr = this.activity.getContentResolver();
         for (long event: eventIds) {
             String[] args = new String[]{Long.toString(event)};
-            cur = cr.query(Events.CONTENT_URI, EventSummary.PROJECTION, selection, args, null);
+            cur = cr.query(Events.CONTENT_URI, EVENT_ID_PROJECTION, selection, args, null);
             assert cur != null;
             if (cur.getCount() == 0) {
                 String[] deleteArgs = new String[]{Long.toString(event), Long.toString(event)};

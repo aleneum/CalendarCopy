@@ -134,9 +134,10 @@ public class MainActivity extends AppCompatActivity implements OnItemSelectedLis
                 Log.i(DEBUG_TAG, "Copy event " + eventId + " to calendar " + service.targetCalendarId);
                 long targetEventId = service.copyEvent(eventId);
                 if (targetEventId > -1) {
-                    EventSummary summary = service.getEventById(eventId);
-                    summary.childrenEventIds.add(targetEventId);
-                    summary.childrenCalendarIds.add(service.targetCalendarId);
+                    for (EventSummary summary:  service.getEventsById(eventId)) {
+                        summary.childrenEventIds.add(targetEventId);
+                        summary.childrenCalendarIds.add(service.targetCalendarId);
+                    }
                 }
             }
         }

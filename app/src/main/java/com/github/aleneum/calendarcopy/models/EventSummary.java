@@ -1,6 +1,6 @@
 package com.github.aleneum.calendarcopy.models;
 
-import android.provider.CalendarContract.Events;
+import android.provider.CalendarContract.Instances;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -8,8 +8,9 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Represents a calendar event. In contrast to {@link EventInfo}, this representation is limited to
- * required fields only. Additionally, it is extended with relational information.
+ * Represents a calendar event derived from {@link Instances}. In contrast to {@link EventInfo},
+ * this representation is limited to required fields only.
+ * Additionally, it is extended with relational information.
  */
 public class EventSummary extends ModelBase {
 
@@ -24,15 +25,15 @@ public class EventSummary extends ModelBase {
 
     /** (Reduced) Projection of all columns of an event entry. Required for queries. */
     public static final String[] PROJECTION = {
-            Events._ID, Events.TITLE, Events.DTSTART
+            Instances.EVENT_ID, Instances.TITLE, Instances.BEGIN,
     };
 
     private static final int ID = 0;
     private static final int TITLE = 1;
-    private static final int DTSTART = 2;
+    private static final int BEGIN = 2;
 
     // for sorting events by data
-    private long dtstart;
+    private long begin;
 
     /**
      * Constructor. Data array in the projection fields' order.
@@ -49,12 +50,12 @@ public class EventSummary extends ModelBase {
     @Override
     public void setInfo(String[] anInfo) {
         super.setInfo(anInfo);
-        dtstart = Long.parseLong(info[DTSTART]);
+        begin = Long.parseLong(info[BEGIN]);
     }
 
     @Override
     public String toString() {
-        return new SimpleDateFormat("dd.MM. (HH:mm) ", Locale.getDefault()).format(dtstart)
+        return new SimpleDateFormat("dd.MM. (HH:mm) ", Locale.getDefault()).format(begin)
                 + info[TITLE];
     }
 
