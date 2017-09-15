@@ -31,6 +31,7 @@
         android:layout_height="match_parent"
         android:layout_weight="6"
         android:choiceMode="multipleChoice"
+        tools:listitem="@android:layout/simple_list_item_multiple_choice"
         />
 
 
